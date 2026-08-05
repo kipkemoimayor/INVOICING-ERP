@@ -1,0 +1,658 @@
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+
+  @@schema("sales")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+
+  @@schema("sales")
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@schema("sales")
+}
+
+enum ProformaStatus {
+  PENDING
+  APPROVED
+  CANCELLED
+  PAID
+
+  @@schema("sales")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  APPROVED
+  VOIDED
+  CANCELLED
+
+  @@schema("sales")
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+
+  @@schema("sales")
+}
+
+enum DeliveryStatus {
+  PENDING
+  DISPATCHED
+  DELIVERED
+  RETURNED
+
+  @@schema("sales")
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  CHEQUE
+  MOBILE_MONEY
+  CARD
+
+  @@schema("sales")
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  RETURN
+  RESERVE
+  RELEASE
+
+  @@schema("sales")
+}
+
+enum StockReferenceType {
+  INVOICE
+  DELIVERY_NOTE
+  PAYMENT
+  MANUAL
+  CANCELLATION
+  RETURN
+
+  @@schema("sales")
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  APPROVED
+  PRINTED
+  DOWNLOADED
+  LOGIN
+  LOGOUT
+  STATUS_CHANGED
+  SENT
+  EXPORTED
+
+  @@schema("sales")
+}
+
+enum DocumentType {
+  QUOTATION
+  PROFORMA
+  TAX_INVOICE
+  DELIVERY_NOTE
+  PAYMENT_RECEIPT
+
+  @@schema("sales")
+}
+
+model User {
+  id             String            @id @default(uuid()) @db.Uuid
+  email          String            @unique @db.VarChar(255)
+  passwordHash   String            @map("password_hash") @db.VarChar(255)
+  firstName      String            @map("first_name") @db.VarChar(100)
+  lastName       String            @map("last_name") @db.VarChar(100)
+  phone          String?           @db.VarChar(50)
+  status         UserStatus        @default(ACTIVE)
+  lastLoginAt    DateTime?         @map("last_login_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  deletedAt      DateTime?         @map("deleted_at")
+  userRoles      UserRole[]
+  quotations     Quotation[]
+  proformas      ProformaInvoice[]
+  invoices       TaxInvoice[]
+  deliveryNotes  DeliveryNote[]
+  payments       Payment[]
+  auditLogs      AuditLog[]
+  activities     Activity[]
+  notifications  Notification[]
+  customerNotes  CustomerNote[]
+  stockMovements StockMovement[]
+
+  @@index([status], name: "idx_users_status")
+  @@map("users")
+  @@schema("sales")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique @db.VarChar(100)
+  description     String?          @db.VarChar(255)
+  isSystem        Boolean          @default(false) @map("is_system")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@map("roles")
+  @@schema("sales")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique @db.VarChar(120)
+  name            String           @db.VarChar(150)
+  description     String?          @db.VarChar(255)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+  @@schema("sales")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+  @@schema("sales")
+}
+
+model UserRole {
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+  @@schema("sales")
+}
+
+model Customer {
+  id            String            @id @default(uuid()) @db.Uuid
+  customerCode  String            @unique @map("customer_code") @db.VarChar(40)
+  companyName   String            @map("company_name") @db.VarChar(255)
+  contactPerson String?           @map("contact_person") @db.VarChar(255)
+  email         String?           @db.VarChar(255)
+  phone         String?           @db.VarChar(50)
+  address       String?           @db.Text
+  taxNumber     String?           @map("tax_number") @db.VarChar(100)
+  status        CustomerStatus    @default(ACTIVE)
+  creditLimit   Decimal?          @map("credit_limit") @db.Decimal(18, 2)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  deletedAt     DateTime?         @map("deleted_at")
+  quotations    Quotation[]
+  proformas     ProformaInvoice[]
+  invoices      TaxInvoice[]
+  deliveryNotes DeliveryNote[]
+  payments      Payment[]
+  notes         CustomerNote[]
+
+  @@index([companyName], name: "idx_customers_company_name")
+  @@index([status], name: "idx_customers_status")
+  @@map("customers")
+  @@schema("sales")
+}
+
+model CustomerNote {
+  id          String   @id @default(uuid()) @db.Uuid
+  customerId  String   @map("customer_id") @db.Uuid
+  note        String   @db.Text
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId], name: "idx_customer_notes_customer_id")
+  @@map("customer_notes")
+  @@schema("sales")
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(120)
+  description String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  products    Product[]
+
+  @@map("product_categories")
+  @@schema("sales")
+}
+
+model Product {
+  id             String             @id @default(uuid()) @db.Uuid
+  sku            String             @unique @db.VarChar(100)
+  name           String             @db.VarChar(255)
+  description    String?            @db.Text
+  sellingPrice   Decimal            @map("selling_price") @db.Decimal(18, 2)
+  costPrice      Decimal            @map("cost_price") @db.Decimal(18, 2)
+  stock          Decimal            @default(0) @db.Decimal(18, 3)
+  taxPercent     Decimal            @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  unit           String             @db.VarChar(30)
+  isActive       Boolean            @default(true) @map("is_active")
+  categoryId     String?            @map("category_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  deletedAt      DateTime?          @map("deleted_at")
+  category       ProductCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  quotationItems QuotationItem[]
+  proformaItems  ProformaItem[]
+  invoiceItems   InvoiceItem[]
+  deliveryItems  DeliveryNoteItem[]
+  stockMovements StockMovement[]
+
+  @@index([name], name: "idx_products_name")
+  @@index([isActive], name: "idx_products_is_active")
+  @@map("products")
+  @@schema("sales")
+}
+
+model Quotation {
+  id              String            @id @default(uuid()) @db.Uuid
+  quotationNumber String            @unique @map("quotation_number") @db.VarChar(40)
+  customerId      String            @map("customer_id") @db.Uuid
+  status          QuotationStatus   @default(DRAFT)
+  issueDate       DateTime          @map("issue_date")
+  expiryDate      DateTime?         @map("expiry_date")
+  currency        String            @default("USD") @db.VarChar(10)
+  subtotal        Decimal           @db.Decimal(18, 2)
+  discountAmount  Decimal           @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxAmount       Decimal           @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount     Decimal           @map("total_amount") @db.Decimal(18, 2)
+  notes           String?           @db.Text
+  acceptedAt      DateTime?         @map("accepted_at")
+  convertedAt     DateTime?         @map("converted_at")
+  createdById     String            @map("created_by_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  deletedAt       DateTime?         @map("deleted_at")
+  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy       User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items           QuotationItem[]
+  proformas       ProformaInvoice[]
+  invoices        TaxInvoice[]
+  activities      Activity[]
+
+  @@index([customerId], name: "idx_quotations_customer_id")
+  @@index([status], name: "idx_quotations_status")
+  @@map("quotations")
+  @@schema("sales")
+}
+
+model QuotationItem {
+  id             String    @id @default(uuid()) @db.Uuid
+  quotationId    String    @map("quotation_id") @db.Uuid
+  productId      String    @map("product_id") @db.Uuid
+  description    String?   @db.Text
+  quantity       Decimal   @db.Decimal(18, 3)
+  unitPrice      Decimal   @map("unit_price") @db.Decimal(18, 2)
+  discountAmount Decimal   @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxPercent     Decimal   @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  taxAmount      Decimal   @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  lineTotal      Decimal   @map("line_total") @db.Decimal(18, 2)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([quotationId], name: "idx_quotation_items_quotation_id")
+  @@map("quotation_items")
+  @@schema("sales")
+}
+
+model ProformaInvoice {
+  id             String         @id @default(uuid()) @db.Uuid
+  proformaNumber String         @unique @map("proforma_number") @db.VarChar(40)
+  quotationId    String         @map("quotation_id") @db.Uuid
+  customerId     String         @map("customer_id") @db.Uuid
+  status         ProformaStatus @default(PENDING)
+  issueDate      DateTime       @map("issue_date")
+  dueDate        DateTime?      @map("due_date")
+  currency       String         @default("USD") @db.VarChar(10)
+  subtotal       Decimal        @db.Decimal(18, 2)
+  discountAmount Decimal        @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxAmount      Decimal        @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount    Decimal        @map("total_amount") @db.Decimal(18, 2)
+  notes          String?        @db.Text
+  approvedAt     DateTime?      @map("approved_at")
+  paidAt         DateTime?      @map("paid_at")
+  convertedAt    DateTime?      @map("converted_at")
+  createdById    String         @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  deletedAt      DateTime?      @map("deleted_at")
+  quotation      Quotation      @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy      User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items          ProformaItem[]
+  invoices       TaxInvoice[]
+  payments       Payment[]
+  activities     Activity[]
+
+  @@index([quotationId], name: "idx_proformas_quotation_id")
+  @@index([status], name: "idx_proformas_status")
+  @@map("proforma_invoices")
+  @@schema("sales")
+}
+
+model ProformaItem {
+  id             String          @id @default(uuid()) @db.Uuid
+  proformaId     String          @map("proforma_id") @db.Uuid
+  productId      String          @map("product_id") @db.Uuid
+  description    String?         @db.Text
+  quantity       Decimal         @db.Decimal(18, 3)
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(18, 2)
+  discountAmount Decimal         @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxPercent     Decimal         @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  taxAmount      Decimal         @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  lineTotal      Decimal         @map("line_total") @db.Decimal(18, 2)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  proforma       ProformaInvoice @relation(fields: [proformaId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([proformaId], name: "idx_proforma_items_proforma_id")
+  @@map("proforma_items")
+  @@schema("sales")
+}
+
+model TaxInvoice {
+  id             String          @id @default(uuid()) @db.Uuid
+  invoiceNumber  String          @unique @map("invoice_number") @db.VarChar(40)
+  quotationId    String?         @map("quotation_id") @db.Uuid
+  proformaId      String?         @map("proforma_id") @db.Uuid
+  customerId     String          @map("customer_id") @db.Uuid
+  status         InvoiceStatus   @default(DRAFT)
+  paymentStatus  PaymentStatus   @default(UNPAID) @map("payment_status")
+  issueDate      DateTime        @map("issue_date")
+  dueDate        DateTime?       @map("due_date")
+  currency       String          @default("USD") @db.VarChar(10)
+  subtotal       Decimal         @db.Decimal(18, 2)
+  discountAmount Decimal         @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxAmount      Decimal         @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount    Decimal         @map("total_amount") @db.Decimal(18, 2)
+  totalPaid      Decimal         @default(0) @map("total_paid") @db.Decimal(18, 2)
+  balanceDue     Decimal         @default(0) @map("balance_due") @db.Decimal(18, 2)
+  approvedAt     DateTime?       @map("approved_at")
+  notes          String?         @db.Text
+  createdById    String          @map("created_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+  quotation      Quotation?      @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  proforma       ProformaInvoice? @relation(fields: [proformaId], references: [id], onDelete: SetNull)
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items          InvoiceItem[]
+  deliveryNotes  DeliveryNote[]
+  payments       Payment[]
+  activities     Activity[]
+
+  @@index([proformaId], name: "idx_invoices_proforma_id")
+  @@index([customerId], name: "idx_invoices_customer_id")
+  @@index([paymentStatus], name: "idx_invoices_payment_status")
+  @@index([status], name: "idx_invoices_status")
+  @@map("tax_invoices")
+  @@schema("sales")
+}
+
+model InvoiceItem {
+  id             String             @id @default(uuid()) @db.Uuid
+  invoiceId      String             @map("invoice_id") @db.Uuid
+  productId      String             @map("product_id") @db.Uuid
+  description    String?            @db.Text
+  quantity       Decimal            @db.Decimal(18, 3)
+  unitPrice      Decimal            @map("unit_price") @db.Decimal(18, 2)
+  discountAmount Decimal            @default(0) @map("discount_amount") @db.Decimal(18, 2)
+  taxPercent     Decimal            @default(0) @map("tax_percent") @db.Decimal(5, 2)
+  taxAmount      Decimal            @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  lineTotal      Decimal            @map("line_total") @db.Decimal(18, 2)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  invoice        TaxInvoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product        Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  deliveryItems  DeliveryNoteItem[]
+
+  @@index([invoiceId], name: "idx_invoice_items_invoice_id")
+  @@map("invoice_items")
+  @@schema("sales")
+}
+
+model DeliveryNote {
+  id             String             @id @default(uuid()) @db.Uuid
+  deliveryNumber String             @unique @map("delivery_number") @db.VarChar(40)
+  invoiceId      String             @map("invoice_id") @db.Uuid
+  customerId     String             @map("customer_id") @db.Uuid
+  status         DeliveryStatus     @default(PENDING)
+  dispatchDate   DateTime?          @map("dispatch_date")
+  deliveredAt    DateTime?          @map("delivered_at")
+  vehicle        String?            @db.VarChar(100)
+  driver         String?            @db.VarChar(120)
+  receiver       String?            @db.VarChar(120)
+  notes          String?            @db.Text
+  createdById    String             @map("created_by_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  deletedAt      DateTime?          @map("deleted_at")
+  invoice        TaxInvoice         @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy      User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items          DeliveryNoteItem[]
+  activities     Activity[]
+
+  @@index([invoiceId], name: "idx_delivery_notes_invoice_id")
+  @@index([status], name: "idx_delivery_notes_status")
+  @@map("delivery_notes")
+  @@schema("sales")
+}
+
+model DeliveryNoteItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  deliveryNoteId String       @map("delivery_note_id") @db.Uuid
+  invoiceItemId  String       @map("invoice_item_id") @db.Uuid
+  productId      String       @map("product_id") @db.Uuid
+  quantity       Decimal      @db.Decimal(18, 3)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  invoiceItem    InvoiceItem  @relation(fields: [invoiceItemId], references: [id], onDelete: Restrict)
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryNoteId], name: "idx_delivery_items_delivery_note_id")
+  @@map("delivery_note_items")
+  @@schema("sales")
+}
+
+model Payment {
+  id            String           @id @default(uuid()) @db.Uuid
+  paymentNumber String           @unique @map("payment_number") @db.VarChar(40)
+  customerId    String           @map("customer_id") @db.Uuid
+  invoiceId     String?          @map("invoice_id") @db.Uuid
+  proformaId    String?          @map("proforma_id") @db.Uuid
+  method        PaymentMethod
+  amount        Decimal          @db.Decimal(18, 2)
+  reference     String?          @db.VarChar(120)
+  paidAt        DateTime         @map("paid_at")
+  notes         String?          @db.Text
+  receiptPath   String?          @map("receipt_path") @db.VarChar(500)
+  createdById   String           @map("created_by_id") @db.Uuid
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  customer      Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoice       TaxInvoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  proforma      ProformaInvoice? @relation(fields: [proformaId], references: [id], onDelete: SetNull)
+  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  activities    Activity[]
+
+  @@index([customerId], name: "idx_payments_customer_id")
+  @@index([invoiceId], name: "idx_payments_invoice_id")
+  @@index([proformaId], name: "idx_payments_proforma_id")
+  @@map("payments")
+  @@schema("sales")
+}
+
+model StockMovement {
+  id            String             @id @default(uuid()) @db.Uuid
+  productId     String             @map("product_id") @db.Uuid
+  type          StockMovementType
+  quantity      Decimal            @db.Decimal(18, 3)
+  unitCost      Decimal?           @map("unit_cost") @db.Decimal(18, 2)
+  beforeStock   Decimal            @map("before_stock") @db.Decimal(18, 3)
+  afterStock    Decimal            @map("after_stock") @db.Decimal(18, 3)
+  referenceType StockReferenceType @map("reference_type")
+  referenceId   String?            @map("reference_id") @db.Uuid
+  remarks       String?            @db.Text
+  createdById   String?            @map("created_by_id") @db.Uuid
+  createdAt     DateTime           @default(now()) @map("created_at")
+  product       Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy     User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([productId], name: "idx_stock_movements_product_id")
+  @@index([referenceType, referenceId], name: "idx_stock_movements_reference")
+  @@map("stock_movements")
+  @@schema("sales")
+}
+
+model DocumentSequence {
+  id           String       @id @default(uuid()) @db.Uuid
+  documentType DocumentType @map("document_type")
+  year         Int
+  prefix       String       @db.VarChar(10)
+  lastNumber   Int          @default(0) @map("last_number")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@unique([documentType, year], name: "uq_document_sequences_type_year")
+  @@map("document_sequences")
+  @@schema("sales")
+}
+
+model FileAsset {
+  id           String       @id @default(uuid()) @db.Uuid
+  documentType DocumentType @map("document_type")
+  documentId   String       @map("document_id") @db.Uuid
+  fileName     String       @map("file_name") @db.VarChar(255)
+  mimeType     String       @map("mime_type") @db.VarChar(120)
+  storagePath  String       @map("storage_path") @db.VarChar(500)
+  sizeBytes    Int          @map("size_bytes")
+  uploadedById String?      @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([documentType, documentId], name: "idx_file_assets_document")
+  @@map("file_assets")
+  @@schema("sales")
+}
+
+model AuditLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  action       AuditAction
+  resourceType String      @map("resource_type") @db.VarChar(120)
+  resourceId   String?     @map("resource_id") @db.Uuid
+  message      String?     @db.Text
+  metadata     Json?
+  ipAddress    String?     @map("ip_address") @db.VarChar(64)
+  userAgent    String?     @map("user_agent") @db.VarChar(500)
+  actorUserId  String?     @map("actor_user_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at")
+  actor        User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId], name: "idx_audit_logs_resource")
+  @@index([createdAt], name: "idx_audit_logs_created_at")
+  @@map("audit_logs")
+  @@schema("sales")
+}
+
+model Activity {
+  id             String           @id @default(uuid()) @db.Uuid
+  activityType   String           @map("activity_type") @db.VarChar(120)
+  description    String?          @db.Text
+  customerId     String?          @map("customer_id") @db.Uuid
+  quotationId    String?          @map("quotation_id") @db.Uuid
+  proformaId     String?          @map("proforma_id") @db.Uuid
+  invoiceId      String?          @map("invoice_id") @db.Uuid
+  deliveryNoteId String?          @map("delivery_note_id") @db.Uuid
+  paymentId      String?          @map("payment_id") @db.Uuid
+  actorUserId    String?          @map("actor_user_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+  quotation      Quotation?       @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  proforma       ProformaInvoice? @relation(fields: [proformaId], references: [id], onDelete: SetNull)
+  invoice        TaxInvoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  deliveryNote   DeliveryNote?    @relation(fields: [deliveryNoteId], references: [id], onDelete: SetNull)
+  payment        Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  actor          User?            @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt], name: "idx_activities_created_at")
+  @@map("activities")
+  @@schema("sales")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  title     String    @db.VarChar(200)
+  body      String?   @db.Text
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead], name: "idx_notifications_user_read")
+  @@map("notifications")
+  @@schema("sales")
+}
+
+model TenantConfiguration {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantKey        String   @unique @default("default") @map("tenant_key") @db.VarChar(100)
+  companyName      String   @map("company_name") @db.VarChar(255)
+  tradeName        String?  @map("trade_name") @db.VarChar(255)
+  tagline          String?  @db.VarChar(255)
+  postalAddress    String?  @map("postal_address") @db.VarChar(255)
+  physicalAddress  String?  @map("physical_address") @db.VarChar(255)
+  city             String?  @db.VarChar(120)
+  phone            String?  @db.VarChar(50)
+  email            String?  @db.VarChar(255)
+  website          String?  @db.VarChar(255)
+  logoPath         String?  @map("logo_path") @db.VarChar(500)
+  preparedByLabel  String?  @map("prepared_by_label") @db.VarChar(100)
+  lpoLabel         String?  @map("lpo_label") @db.VarChar(100)
+  commentsLabel    String?  @map("comments_label") @db.VarChar(150)
+  defaultCurrency  String   @default("KSH") @map("default_currency") @db.VarChar(10)
+  defaultTaxPercent Decimal @default(16) @map("default_tax_percent") @db.Decimal(5, 2)
+  quotationNumberStart Int  @default(100) @map("quotation_number_start")
+  skipProforma      Boolean  @default(false) @map("skip_proforma")
+  defaultTerms     String?  @map("default_terms") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("tenant_configurations")
+  @@schema("sales")
+}
