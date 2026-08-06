@@ -7,4 +7,5 @@ export const ORIGINS = [
   "https://986b-41-212-62-49.ngrok-free.app",
   "https://0f44-41-212-62-49.ngrok-free.app",
   "https://invoicing-erp-cofk-two.vercel.app",
+  "https://invoicing-erp-frontend.invoicing-erp.workers.dev",
 ];
