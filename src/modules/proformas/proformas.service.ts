@@ -6,7 +6,7 @@ import {
 import * as PDFKit from "pdfkit";
 import { existsSync } from "fs";
 import { join } from "path";
-import { DocumentType, Prisma, ProformaStatus } from "@prisma-client";
+import { DocumentType, Prisma, ProformaStatus } from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
 import { SettingsService } from "../settings/settings.service";

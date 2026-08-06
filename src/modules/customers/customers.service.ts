@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Customer, CustomerStatus, Prisma } from "@prisma-client";
+import { Customer, CustomerStatus, Prisma } from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
 import { AddCustomerNoteDto } from "./dto/add-customer-note.dto";

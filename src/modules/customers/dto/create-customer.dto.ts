@@ -7,7 +7,7 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
-import { CustomerStatus } from "@prisma-client";
+import { CustomerStatus } from "@prisma/client";
 import { Type } from "class-transformer";
 
 export class CreateCustomerDto {

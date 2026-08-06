@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { DeliveryStatus, Prisma, QuotationStatus } from "@prisma-client";
+import { DeliveryStatus, Prisma, QuotationStatus } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";

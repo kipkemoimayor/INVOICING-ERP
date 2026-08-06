@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { DeliveryStatus } from "@prisma-client";
+import { DeliveryStatus } from "@prisma/client";
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class QueryDeliveryNotesDto {

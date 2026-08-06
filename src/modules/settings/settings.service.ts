@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DocumentType, Prisma, TenantConfiguration } from "@prisma-client";
+import { DocumentType, Prisma, TenantConfiguration } from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
 import { UpdateTenantConfigurationDto } from "./dto/update-tenant-configuration.dto";

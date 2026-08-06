@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { UserStatus } from "@prisma-client";
+import { UserStatus } from "@prisma/client";
 import {
   IsEnum,
   IsInt,

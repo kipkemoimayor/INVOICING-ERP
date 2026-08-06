@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { PaymentMethod } from "@prisma-client";
+import { PaymentMethod } from "@prisma/client";
 import {
   IsDateString,
   IsEnum,

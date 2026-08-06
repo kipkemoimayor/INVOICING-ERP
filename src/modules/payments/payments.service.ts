@@ -9,7 +9,7 @@ import {
   PaymentStatus,
   Prisma,
   ProformaStatus,
-} from "@prisma-client";
+} from "@prisma/client";
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import * as XLSX from "xlsx";

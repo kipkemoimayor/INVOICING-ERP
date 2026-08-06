@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { InvoiceStatus, PaymentStatus } from "@prisma-client";
+import { InvoiceStatus, PaymentStatus } from "@prisma/client";
 import {
   IsDateString,
   IsEnum,

@@ -10,7 +10,7 @@ import {
   MaxLength,
   ValidateNested,
 } from "class-validator";
-import { QuotationStatus } from "@prisma-client";
+import { QuotationStatus } from "@prisma/client";
 import { QuotationItemDto } from "./quotation-item.dto";
 
 export class CreateQuotationDto {

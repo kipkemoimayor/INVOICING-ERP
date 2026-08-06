@@ -4,7 +4,7 @@ import {
   InvoiceStatus,
   PaymentStatus,
   QuotationStatus,
-} from "@prisma-client";
+} from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 
 @Injectable()

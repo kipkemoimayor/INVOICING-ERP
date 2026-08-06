@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { Prisma, UserStatus } from "@prisma-client";
+import { Prisma, UserStatus } from "@prisma/client";
 import { randomBytes, scryptSync } from "crypto";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";

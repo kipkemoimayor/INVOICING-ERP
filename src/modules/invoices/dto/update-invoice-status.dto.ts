@@ -1,4 +1,4 @@
-import { InvoiceStatus } from "@prisma-client";
+import { InvoiceStatus } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   IsEnum,

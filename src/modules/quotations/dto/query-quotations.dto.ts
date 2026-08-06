@@ -8,7 +8,7 @@ import {
   Max,
   Min,
 } from "class-validator";
-import { QuotationStatus } from "@prisma-client";
+import { QuotationStatus } from "@prisma/client";
 
 export class QueryQuotationsDto {
   @IsOptional()

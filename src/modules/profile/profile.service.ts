@@ -1,4 +1,4 @@
-import { AuditAction, Prisma, UserStatus } from "@prisma-client";
+import { AuditAction, Prisma, UserStatus } from "@prisma/client";
 import {
   BadRequestException,
   Injectable,

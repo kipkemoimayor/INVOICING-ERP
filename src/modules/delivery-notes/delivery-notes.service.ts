@@ -9,7 +9,7 @@ import {
   DocumentType,
   InvoiceStatus,
   Prisma,
-} from "@prisma-client";
+} from "@prisma/client";
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { DataAccessService } from "../../data-access/data-access.service";

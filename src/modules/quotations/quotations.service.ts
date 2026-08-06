@@ -10,7 +10,7 @@ import {
   Prisma,
   Quotation,
   QuotationStatus,
-} from "@prisma-client";
+} from "@prisma/client";
 import { existsSync } from "fs";
 import { join } from "path";
 import { DataAccessService } from "../../data-access/data-access.service";

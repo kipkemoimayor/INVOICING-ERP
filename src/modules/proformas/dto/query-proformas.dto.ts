@@ -8,7 +8,7 @@ import {
   Max,
   Min,
 } from "class-validator";
-import { ProformaStatus } from "@prisma-client";
+import { ProformaStatus } from "@prisma/client";
 
 export class QueryProformasDto {
   @IsOptional()

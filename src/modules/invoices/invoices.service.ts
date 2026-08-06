@@ -12,7 +12,7 @@ import {
   InvoiceStatus,
   PaymentStatus,
   Prisma,
-} from "@prisma-client";
+} from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
 import { EmailService } from "../email/email.service";

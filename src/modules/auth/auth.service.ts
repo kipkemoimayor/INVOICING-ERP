@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { AuditAction, UserStatus } from "@prisma-client";
+import { AuditAction, UserStatus } from "@prisma/client";
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { RbacService } from "../rbac/rbac.service";
