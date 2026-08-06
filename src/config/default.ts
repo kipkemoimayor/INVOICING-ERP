@@ -6,6 +6,5 @@ export const ORIGINS = [
   "https://grouprestapi-prod.platcorpgroup.com",
   "https://986b-41-212-62-49.ngrok-free.app",
   "https://0f44-41-212-62-49.ngrok-free.app",
-  // "https://uat-auditrialfrontend.platcorpgroup.com",
-  // "https://grouprestapi-uat.platcorpgroup.com",
+  "https://invoicing-erp-cofk-two.vercel.app",
 ];
