@@ -487,9 +487,6 @@ export class InvoicesService {
           error instanceof Error ? error.message : "Failed to send invoice";
         const approvedInvoice = await this.findOne(id);
         await this.logInvoiceEmailFailure(approvedInvoice, errorMessage);
-        throw new BadRequestException(
-          `Invoice approved, but email delivery failed: ${errorMessage}`,
-        );
       }
     }
 
@@ -860,6 +857,52 @@ export class InvoicesService {
         align: "right",
       });
     });
+
+    const paymentDetails: string[] = [];
+    if (tenant.kraPin) {
+      paymentDetails.push(`KRA PIN: ${tenant.kraPin}`);
+    }
+    if (tenant.bankName || tenant.bankAccountNumber) {
+      paymentDetails.push(
+        `Bank: ${tenant.bankName || "N/A"}${tenant.bankAccountNumber ? ` • A/C: ${tenant.bankAccountNumber}` : ""}`,
+      );
+    }
+    if (tenant.mpesaAccountType) {
+      if (tenant.mpesaAccountType === "TILL") {
+        paymentDetails.push(
+          `Mpesa Till: ${tenant.mpesaTillNumber || "N/A"}`,
+        );
+      } else {
+        paymentDetails.push(
+          `Mpesa Paybill: ${tenant.mpesaPaybillNumber || "N/A"}${tenant.mpesaAccountNumber ? ` • A/C: ${tenant.mpesaAccountNumber}` : ""}`,
+        );
+      }
+    }
+
+    if (paymentDetails.length > 0) {
+      let paymentDetailsTop = summaryTop + 130;
+      if (paymentDetailsTop + 90 > maxBodyY) {
+        doc.addPage();
+        paymentDetailsTop = margin + 10;
+      }
+      doc
+        .rect(margin, paymentDetailsTop, contentWidth - 50, 86)
+        .strokeColor(light)
+        .lineWidth(1)
+        .stroke();
+      doc
+        .fillColor(accent)
+        .font("Helvetica-Bold")
+        .fontSize(9)
+        .text("Payment Details", margin + 12, paymentDetailsTop + 8);
+
+      doc.fillColor(muted).font("Helvetica").fontSize(8);
+      paymentDetails.forEach((line, idx) => {
+        doc.text(line, margin + 12, paymentDetailsTop + 24 + idx * 16, {
+          width: contentWidth - 80,
+        });
+      });
+    }
 
     doc
       .fillColor("#64748b")

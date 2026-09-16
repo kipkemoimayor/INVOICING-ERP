@@ -29,6 +29,7 @@ export class SettingsService {
         defaultTaxPercent: 16,
         quotationNumberStart: DEFAULTS.quotationNumberStart,
         skipProforma: false,
+        kraPin: "",
       },
     });
   }
@@ -51,6 +52,20 @@ export class SettingsService {
       if (dto.phone !== undefined) data.phone = dto.phone.trim();
       if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase();
       if (dto.website !== undefined) data.website = dto.website.trim();
+      if (dto.kraPin !== undefined) data.kraPin = dto.kraPin.trim();
+      else if (dto.taxPin !== undefined) data.kraPin = dto.taxPin.trim();
+      if (dto.bankName !== undefined) data.bankName = dto.bankName.trim();
+      if (dto.bankAccountNumber !== undefined)
+        data.bankAccountNumber = dto.bankAccountNumber.trim();
+      if (dto.mpesaAccountType !== undefined) {
+        data.mpesaAccountType = dto.mpesaAccountType;
+      }
+      if (dto.mpesaTillNumber !== undefined)
+        data.mpesaTillNumber = dto.mpesaTillNumber.trim();
+      if (dto.mpesaPaybillNumber !== undefined)
+        data.mpesaPaybillNumber = dto.mpesaPaybillNumber.trim();
+      if (dto.mpesaAccountNumber !== undefined)
+        data.mpesaAccountNumber = dto.mpesaAccountNumber.trim();
       if (dto.preparedByLabel !== undefined)
         data.preparedByLabel = dto.preparedByLabel.trim();
       if (dto.lpoLabel !== undefined) data.lpoLabel = dto.lpoLabel.trim();

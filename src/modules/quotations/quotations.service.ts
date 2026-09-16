@@ -337,6 +337,7 @@ export class QuotationsService {
     tx: Prisma.TransactionClient,
     items: CreateQuotationDto["items"],
     defaultTaxPercent: number,
+    excludeVat = false,
   ) {
     const builtItems: BuiltQuotationItem[] = [];
     let subtotal = 0;
@@ -411,7 +412,7 @@ export class QuotationsService {
       });
     }
 
-    const taxAmount = (subtotal * defaultTaxPercent) / 100;
+    const taxAmount = excludeVat ? 0 : (subtotal * defaultTaxPercent) / 100;
 
     return {
       items: builtItems,
@@ -520,7 +521,13 @@ export class QuotationsService {
         configuredStart > 0 ? configuredStart : DEFAULTS.quotationNumberStart,
       );
       const defaultTaxPercent = await this.getDefaultTaxPercent();
-      const summary = await this.buildItems(tx, dto.items, defaultTaxPercent);
+      const excludeVat = Boolean(dto.excludeVat ?? false);
+      const summary = await this.buildItems(
+        tx,
+        dto.items,
+        defaultTaxPercent,
+        excludeVat,
+      );
 
       return tx.quotation.create({
         data: {
@@ -534,6 +541,7 @@ export class QuotationsService {
           discountAmount: summary.discountAmount,
           taxAmount: summary.taxAmount,
           totalAmount: summary.totalAmount,
+          excludeVat,
           notes: dto.notes?.trim(),
           createdById,
           items: {
@@ -601,6 +609,17 @@ export class QuotationsService {
       throw new BadRequestException("Accepted quotations cannot be edited");
     }
 
+    if (dto.customerId) {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: dto.customerId, deletedAt: null },
+      });
+      if (!customer) {
+        throw new NotFoundException(
+          `Customer with id ${dto.customerId} not found`,
+        );
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       let summary:
         | {
@@ -612,15 +631,24 @@ export class QuotationsService {
           }
         | undefined;
 
+      const excludeVat =
+        dto.excludeVat !== undefined ? Boolean(dto.excludeVat) : existing.excludeVat;
+
       if (dto.items) {
         const defaultTaxPercent = await this.getDefaultTaxPercent();
-        summary = await this.buildItems(tx, dto.items, defaultTaxPercent);
+        summary = await this.buildItems(
+          tx,
+          dto.items,
+          defaultTaxPercent,
+          excludeVat,
+        );
         await tx.quotationItem.deleteMany({ where: { quotationId: id } });
       }
 
       return tx.quotation.update({
         where: { id },
         data: {
+          customerId: dto.customerId ?? undefined,
           issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
           expiryDate:
             dto.expiryDate !== undefined
@@ -631,6 +659,7 @@ export class QuotationsService {
           currency: dto.currency?.trim().toUpperCase(),
           notes: dto.notes?.trim(),
           status: dto.status,
+          excludeVat,
           subtotal: summary?.subtotal,
           discountAmount: summary?.discountAmount,
           taxAmount: summary?.taxAmount,

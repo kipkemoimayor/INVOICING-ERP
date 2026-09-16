@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsOptional,
@@ -33,6 +34,10 @@ export class CreateQuotationDto {
   @IsOptional()
   @IsEnum(QuotationStatus)
   status?: QuotationStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  excludeVat?: boolean;
 
   @IsOptional()
   @IsString()

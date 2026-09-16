@@ -70,6 +70,13 @@ enum PaymentMethod {
   @@schema("sales")
 }
 
+enum MpesaAccountType {
+  TILL
+  PAYBILL
+
+  @@schema("sales")
+}
+
 enum StockMovementType {
   IN
   OUT
@@ -290,6 +297,7 @@ model Quotation {
   subtotal        Decimal           @db.Decimal(18, 2)
   discountAmount  Decimal           @default(0) @map("discount_amount") @db.Decimal(18, 2)
   taxAmount       Decimal           @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  excludeVat      Boolean           @default(false) @map("exclude_vat")
   totalAmount     Decimal           @map("total_amount") @db.Decimal(18, 2)
   notes           String?           @db.Text
   acceptedAt      DateTime?         @map("accepted_at")
@@ -641,6 +649,13 @@ model TenantConfiguration {
   phone            String?  @db.VarChar(50)
   email            String?  @db.VarChar(255)
   website          String?  @db.VarChar(255)
+  kraPin           String?  @map("kra_pin") @db.VarChar(100)
+  bankName         String?  @map("bank_name") @db.VarChar(255)
+  bankAccountNumber String? @map("bank_account_number") @db.VarChar(80)
+  mpesaAccountType MpesaAccountType? @map("mpesa_account_type")
+  mpesaTillNumber  String?  @map("mpesa_till_number") @db.VarChar(50)
+  mpesaPaybillNumber String? @map("mpesa_paybill_number") @db.VarChar(50)
+  mpesaAccountNumber String? @map("mpesa_account_number") @db.VarChar(80)
   logoPath         String?  @map("logo_path") @db.VarChar(500)
   preparedByLabel  String?  @map("prepared_by_label") @db.VarChar(100)
   lpoLabel         String?  @map("lpo_label") @db.VarChar(100)

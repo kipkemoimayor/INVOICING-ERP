@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsEmail,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -54,6 +55,45 @@ export class UpdateTenantConfigurationDto {
   @IsString()
   @MaxLength(255)
   website?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  taxPin?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  kraPin?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsEnum({ TILL: "TILL", PAYBILL: "PAYBILL" })
+  mpesaAccountType?: "TILL" | "PAYBILL";
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  mpesaTillNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  mpesaPaybillNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  mpesaAccountNumber?: string;
 
   @IsOptional()
   @IsString()
