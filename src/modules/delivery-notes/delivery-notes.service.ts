@@ -12,6 +12,7 @@ import {
 } from "@prisma/client";
 import { createReadStream, existsSync } from "fs";
 import { join } from "path";
+import { Readable } from "stream";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { fetchBlobBuffer, uploadToBlob } from "../../utils/blob-storage";
 import { DEFAULTS } from "../../defaults";
@@ -392,7 +393,7 @@ export class DeliveryNotesService {
     if (asset.storagePath.startsWith("http")) {
       const { buffer, contentType } = await fetchBlobBuffer(asset.storagePath);
       return {
-        stream: Buffer.from(buffer),
+        stream: Readable.from(buffer),
         filename: asset.fileName,
         contentType,
       };

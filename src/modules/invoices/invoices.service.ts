@@ -6,6 +6,7 @@ import {
 import * as PDFKit from "pdfkit";
 import { createReadStream, existsSync } from "fs";
 import { join } from "path";
+import { Readable } from "stream";
 import {
   AuditAction,
   DocumentType,
@@ -627,7 +628,7 @@ export class InvoicesService {
 
     const { buffer, contentType } = await fetchBlobBuffer(payment.receiptPath);
     return {
-      stream: Buffer.from(buffer),
+      stream: Readable.from(buffer),
       filename: "payment-proof",
       contentType,
     };

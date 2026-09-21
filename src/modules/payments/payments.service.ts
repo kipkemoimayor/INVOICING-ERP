@@ -13,6 +13,7 @@ import {
 import * as XLSX from "xlsx";
 import { createReadStream, existsSync } from "fs";
 import { join } from "path";
+import { Readable } from "stream";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
 import { fetchBlobBuffer, uploadToBlob } from "../../utils/blob-storage";
@@ -292,7 +293,7 @@ export class PaymentsService {
     if (payment.receiptPath.startsWith("http")) {
       const { buffer, contentType } = await fetchBlobBuffer(payment.receiptPath);
       return {
-        stream: Buffer.from(buffer),
+        stream: Readable.from(buffer),
         filename: "payment-proof",
         contentType,
       };
