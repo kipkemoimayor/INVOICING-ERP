@@ -2,6 +2,16 @@ import { BadRequestException } from "@nestjs/common";
 import { put } from "@vercel/blob";
 import { extname } from "path";
 
+const getBlobToken = (): string => {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    throw new BadRequestException(
+      "Missing Vercel Blob token. Set BLOB_READ_WRITE_TOKEN in the environment before uploading documents.",
+    );
+  }
+  return token;
+};
+
 export type BlobUploadInput = {
   buffer: Buffer;
   originalname?: string;
@@ -49,6 +59,7 @@ export async function uploadToBlob(
     access: "public",
     contentType: file.mimetype || "application/octet-stream",
     addRandomSuffix: false,
+    token: getBlobToken(),
   });
 
   return {
