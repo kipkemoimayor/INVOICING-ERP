@@ -10,9 +10,10 @@ import {
   InvoiceStatus,
   Prisma,
 } from "@prisma/client";
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
+import { createReadStream, existsSync } from "fs";
 import { join } from "path";
 import { DataAccessService } from "../../data-access/data-access.service";
+import { fetchBlobBuffer, uploadToBlob } from "../../utils/blob-storage";
 import { DEFAULTS } from "../../defaults";
 import { CreateDeliveryNoteDto } from "./dto/create-delivery-note.dto";
 import { QueryDeliveryNotesDto } from "./dto/query-delivery-notes.dto";
@@ -65,39 +66,26 @@ export class DeliveryNotesService {
     return `DN-${year}-${sequence.lastNumber.toString().padStart(6, "0")}`;
   }
 
-  private saveAttachmentFile(attachment: {
+  private async saveAttachmentFile(attachment: {
     buffer: Buffer;
     mimetype: string;
     originalname: string;
     size: number;
   }) {
-    const uploadDir = join(process.cwd(), "uploads", "delivery-notes");
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    const extension =
-      attachment.mimetype === "application/pdf"
-        ? ".pdf"
-        : attachment.mimetype === "image/png"
-          ? ".png"
-          : attachment.mimetype === "image/jpeg"
-            ? ".jpg"
-            : attachment.mimetype === "image/webp"
-              ? ".webp"
-              : attachment.mimetype === "application/msword"
-                ? ".doc"
-                : ".docx";
-    const fileName = `delivery-note-${Date.now()}${extension}`;
-    const absolutePath = join(uploadDir, fileName);
-    writeFileSync(absolutePath, attachment.buffer);
+    const uploaded = await uploadToBlob(
+      {
+        buffer: attachment.buffer,
+        originalname: attachment.originalname,
+        mimetype: attachment.mimetype,
+      },
+      "delivery-notes",
+    );
+
     return {
-      fileName: attachment.originalname?.trim() || fileName,
-      mimeType: attachment.mimetype,
-      sizeBytes: attachment.size ?? attachment.buffer.byteLength,
-      storagePath: join("uploads", "delivery-notes", fileName).replace(
-        /\\/g,
-        "/",
-      ),
+      fileName: uploaded.fileName,
+      mimeType: uploaded.mimeType,
+      sizeBytes: attachment.size ?? uploaded.sizeBytes,
+      storagePath: uploaded.url,
     };
   }
 
@@ -235,7 +223,7 @@ export class DeliveryNotesService {
       throw new BadRequestException("Attachment is required");
     }
 
-    const attachmentInfo = this.saveAttachmentFile(attachment);
+    const attachmentInfo = await this.saveAttachmentFile(attachment);
     return this.prisma.$transaction(async (tx) => {
       const createdById = await this.ensureSystemUserId(tx);
       const deliveryNumber = await this.generateDeliveryNumber(tx);
@@ -400,6 +388,16 @@ export class DeliveryNotesService {
     if (!asset) {
       throw new NotFoundException("Delivery note attachment not found");
     }
+
+    if (asset.storagePath.startsWith("http")) {
+      const { buffer, contentType } = await fetchBlobBuffer(asset.storagePath);
+      return {
+        stream: Buffer.from(buffer),
+        filename: asset.fileName,
+        contentType,
+      };
+    }
+
     const absolutePath = join(process.cwd(), asset.storagePath);
     if (!existsSync(absolutePath)) {
       throw new NotFoundException("Attachment file is missing");

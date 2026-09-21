@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import * as PDFKit from "pdfkit";
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
+import { createReadStream, existsSync } from "fs";
 import { join } from "path";
 import {
   AuditAction,
@@ -15,6 +15,7 @@ import {
 } from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
+import { fetchBlobBuffer, uploadToBlob } from "../../utils/blob-storage";
 import { EmailService } from "../email/email.service";
 import { DeliveryNotesService } from "../delivery-notes/delivery-notes.service";
 import { SettingsService } from "../settings/settings.service";
@@ -332,39 +333,28 @@ export class InvoicesService {
     });
   }
 
-  private saveInvoiceApprovalAttachment(attachment: ApprovalAttachmentFile): {
+  private async saveInvoiceApprovalAttachment(
+    attachment: ApprovalAttachmentFile,
+  ): Promise<{
     fileName: string;
     mimeType: string;
     storagePath: string;
     sizeBytes: number;
-  } {
-    const uploadDir = join(process.cwd(), "uploads", "invoices", "approvals");
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    const extension =
-      attachment.mimetype === "application/pdf"
-        ? ".pdf"
-        : attachment.mimetype === "image/png"
-          ? ".png"
-          : attachment.mimetype === "image/jpeg"
-            ? ".jpg"
-            : attachment.mimetype === "image/webp"
-              ? ".webp"
-              : attachment.mimetype === "application/msword"
-                ? ".doc"
-                : ".docx";
-    const fileName = `invoice-approval-${Date.now()}${extension}`;
-    const absolutePath = join(uploadDir, fileName);
-    writeFileSync(absolutePath, attachment.buffer);
+  }> {
+    const uploaded = await uploadToBlob(
+      {
+        buffer: attachment.buffer,
+        originalname: attachment.originalname,
+        mimetype: attachment.mimetype,
+      },
+      "invoices/approvals",
+    );
+
     return {
-      fileName: attachment.originalname?.trim() || fileName,
-      mimeType: attachment.mimetype,
-      sizeBytes: attachment.size ?? attachment.buffer.byteLength,
-      storagePath: join("uploads", "invoices", "approvals", fileName).replace(
-        /\\/g,
-        "/",
-      ),
+      fileName: uploaded.fileName,
+      mimeType: uploaded.mimeType,
+      sizeBytes: attachment.size ?? uploaded.sizeBytes,
+      storagePath: uploaded.url,
     };
   }
 
@@ -414,7 +404,7 @@ export class InvoicesService {
           "Approval attachment is required when approving invoice",
         );
       }
-      attachmentInfo = this.saveInvoiceApprovalAttachment(attachment);
+      attachmentInfo = await this.saveInvoiceApprovalAttachment(attachment);
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -493,28 +483,23 @@ export class InvoicesService {
     return updated;
   }
 
-  private savePaymentProofFile(
+  private async savePaymentProofFile(
     proof: PaymentProofFile | undefined,
-  ): string | undefined {
+  ): Promise<string | undefined> {
     if (!proof || !proof.buffer) {
       return undefined;
     }
-    const uploadDir = join(process.cwd(), "uploads", "payments");
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    const extension =
-      proof.mimetype === "application/pdf"
-        ? ".pdf"
-        : proof.mimetype === "image/png"
-          ? ".png"
-          : proof.mimetype === "image/jpeg"
-            ? ".jpg"
-            : ".webp";
-    const filename = `payment-proof-${Date.now()}${extension}`;
-    const absolutePath = join(uploadDir, filename);
-    writeFileSync(absolutePath, proof.buffer);
-    return join("uploads", "payments", filename).replace(/\\/g, "/");
+
+    const uploaded = await uploadToBlob(
+      {
+        buffer: proof.buffer,
+        originalname: "payment-proof",
+        mimetype: proof.mimetype,
+      },
+      "payments",
+    );
+
+    return uploaded.url;
   }
 
   async recordPayment(
@@ -528,7 +513,7 @@ export class InvoicesService {
         "Payments can only be recorded for approved invoices",
       );
     }
-    const proofPath = this.savePaymentProofFile(proof);
+    const proofPath = await this.savePaymentProofFile(proof);
 
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.taxInvoice.findUnique({
@@ -619,21 +604,31 @@ export class InvoicesService {
     if (!payment.receiptPath) {
       throw new NotFoundException("Payment proof not found");
     }
-    const absolutePath = join(process.cwd(), payment.receiptPath);
-    if (!existsSync(absolutePath)) {
-      throw new NotFoundException("Payment proof file is missing");
+
+    if (!payment.receiptPath.startsWith("http")) {
+      const absolutePath = join(process.cwd(), payment.receiptPath);
+      if (!existsSync(absolutePath)) {
+        throw new NotFoundException("Payment proof file is missing");
+      }
+      const lower = absolutePath.toLowerCase();
+      const contentType = lower.endsWith(".pdf")
+        ? "application/pdf"
+        : lower.endsWith(".png")
+          ? "image/png"
+          : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+            ? "image/jpeg"
+            : "image/webp";
+      return {
+        stream: createReadStream(absolutePath),
+        filename: absolutePath.split("\\").pop() ?? "payment-proof",
+        contentType,
+      };
     }
-    const lower = absolutePath.toLowerCase();
-    const contentType = lower.endsWith(".pdf")
-      ? "application/pdf"
-      : lower.endsWith(".png")
-        ? "image/png"
-        : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
-          ? "image/jpeg"
-          : "image/webp";
+
+    const { buffer, contentType } = await fetchBlobBuffer(payment.receiptPath);
     return {
-      stream: createReadStream(absolutePath),
-      filename: absolutePath.split("\\").pop() ?? "payment-proof",
+      stream: Buffer.from(buffer),
+      filename: "payment-proof",
       contentType,
     };
   }
@@ -679,9 +674,18 @@ export class InvoicesService {
 
     doc.rect(margin, cursorY, contentWidth, 62).fill("#f8fafc");
     if (tenant.logoPath) {
-      const logoPath = join(process.cwd(), tenant.logoPath);
-      if (existsSync(logoPath)) {
-        doc.image(logoPath, margin + 10, cursorY + 6, { fit: [80, 50] });
+      try {
+        if (tenant.logoPath.startsWith("http")) {
+          const { buffer } = await fetchBlobBuffer(tenant.logoPath);
+          doc.image(buffer, margin + 10, cursorY + 6, { fit: [80, 50] });
+        } else {
+          const logoPath = join(process.cwd(), tenant.logoPath);
+          if (existsSync(logoPath)) {
+            doc.image(logoPath, margin + 10, cursorY + 6, { fit: [80, 50] });
+          }
+        }
+      } catch {
+        // Ignore logo errors and continue generating the document.
       }
     }
     doc

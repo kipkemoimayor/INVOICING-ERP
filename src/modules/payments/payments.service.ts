@@ -10,11 +10,12 @@ import {
   Prisma,
   ProformaStatus,
 } from "@prisma/client";
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
 import * as XLSX from "xlsx";
+import { createReadStream, existsSync } from "fs";
+import { join } from "path";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
+import { fetchBlobBuffer, uploadToBlob } from "../../utils/blob-storage";
 import { InvoicesService } from "../invoices/invoices.service";
 import { RecordInvoicePaymentDto } from "../invoices/dto/record-invoice-payment.dto";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
@@ -74,33 +75,29 @@ export class PaymentsService {
     return `${prefix}-${year}-${sequence.lastNumber.toString().padStart(6, "0")}`;
   }
 
-  private savePaymentProofFile(
+  private async savePaymentProofFile(
     proof:
       | {
           buffer: Buffer;
           mimetype: string;
+          originalname?: string;
         }
       | undefined,
-  ): string | undefined {
+  ): Promise<string | undefined> {
     if (!proof || !proof.buffer) {
       return undefined;
     }
-    const uploadDir = join(process.cwd(), "uploads", "payments");
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    const extension =
-      proof.mimetype === "application/pdf"
-        ? ".pdf"
-        : proof.mimetype === "image/png"
-          ? ".png"
-          : proof.mimetype === "image/jpeg"
-            ? ".jpg"
-            : ".webp";
-    const filename = `payment-proof-${Date.now()}${extension}`;
-    const absolutePath = join(uploadDir, filename);
-    writeFileSync(absolutePath, proof.buffer);
-    return join("uploads", "payments", filename).replace(/\\/g, "/");
+
+    const uploaded = await uploadToBlob(
+      {
+        buffer: proof.buffer,
+        originalname: proof.originalname ?? "payment-proof",
+        mimetype: proof.mimetype,
+      },
+      "payments",
+    );
+
+    return uploaded.url;
   }
 
   private buildWhere(query: QueryPaymentsDto): Prisma.PaymentWhereInput {
@@ -218,7 +215,7 @@ export class PaymentsService {
       );
     }
 
-    const proofPath = this.savePaymentProofFile(proof);
+    const proofPath = await this.savePaymentProofFile(proof);
     return this.prisma.$transaction(async (tx) => {
       const proforma = await tx.proformaInvoice.findFirst({
         where: { id: dto.proformaId, deletedAt: null },
@@ -291,6 +288,16 @@ export class PaymentsService {
     if (!payment.receiptPath) {
       throw new NotFoundException("Payment proof not found");
     }
+
+    if (payment.receiptPath.startsWith("http")) {
+      const { buffer, contentType } = await fetchBlobBuffer(payment.receiptPath);
+      return {
+        stream: Buffer.from(buffer),
+        filename: "payment-proof",
+        contentType,
+      };
+    }
+
     const absolutePath = join(process.cwd(), payment.receiptPath);
     if (!existsSync(absolutePath)) {
       throw new NotFoundException("Payment proof file is missing");

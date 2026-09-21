@@ -9,6 +9,7 @@ import { join } from "path";
 import { DocumentType, Prisma, ProformaStatus } from "@prisma/client";
 import { DataAccessService } from "../../data-access/data-access.service";
 import { DEFAULTS } from "../../defaults";
+import { fetchBlobBuffer } from "../../utils/blob-storage";
 import { SettingsService } from "../settings/settings.service";
 import { QueryProformasDto } from "./dto/query-proformas.dto";
 import { UpdateProformaDto } from "./dto/update-proforma.dto";
@@ -346,9 +347,18 @@ export class ProformasService {
 
     doc.rect(margin, cursorY, contentWidth, 62).fill("#f8fafc");
     if (tenant.logoPath) {
-      const logoPath = join(process.cwd(), tenant.logoPath);
-      if (existsSync(logoPath)) {
-        doc.image(logoPath, margin + 10, cursorY + 6, { fit: [80, 50] });
+      try {
+        if (tenant.logoPath.startsWith("http")) {
+          const { buffer } = await fetchBlobBuffer(tenant.logoPath);
+          doc.image(buffer, margin + 10, cursorY + 6, { fit: [80, 50] });
+        } else {
+          const logoPath = join(process.cwd(), tenant.logoPath);
+          if (existsSync(logoPath)) {
+            doc.image(logoPath, margin + 10, cursorY + 6, { fit: [80, 50] });
+          }
+        }
+      } catch {
+        // Ignore logo errors and continue generating the document.
       }
     }
     doc

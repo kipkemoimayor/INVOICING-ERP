@@ -11,9 +11,8 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { extname, join } from "path";
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from "fs";
 import { Response } from "express";
+import { uploadToBlob } from "../../utils/blob-storage";
 import { SettingsService } from "./settings.service";
 import { UpdateTenantConfigurationDto } from "./dto/update-tenant-configuration.dto";
 
@@ -45,7 +44,8 @@ export class SettingsController {
     }),
   )
   async uploadLogo(
-    @UploadedFile() file: { originalname: string; buffer?: Buffer } | undefined,
+    @UploadedFile()
+    file: { originalname: string; buffer?: Buffer; mimetype?: string } | undefined,
   ) {
     if (!file) {
       throw new BadRequestException("Logo file is required");
@@ -54,36 +54,37 @@ export class SettingsController {
       throw new BadRequestException("Invalid logo upload");
     }
 
-    const uploadDir = join(process.cwd(), "uploads", "tenant");
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    const extension = extname(file.originalname || ".png") || ".png";
-    const filename = `tenant-logo-${Date.now()}${extension}`;
-    const absolutePath = join(uploadDir, filename);
-    writeFileSync(absolutePath, file.buffer);
+    const uploaded = await uploadToBlob(
+      {
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype || "image/png",
+      },
+      "tenant",
+    );
 
-    const relativePath = join("uploads", "tenant", filename);
-    const normalized = relativePath.replace(/\\/g, "/");
-    await this.settingsService.setLogoPath(normalized);
-    return { logoPath: normalized };
+    await this.settingsService.setLogoPath(uploaded.url);
+    return { logoPath: uploaded.url };
   }
 
   @Get("tenant/logo")
   async getLogo(@Res({ passthrough: true }) res: Response) {
-    const logoPath = await this.settingsService.getLogoPath();
-    const absolutePath = join(process.cwd(), logoPath);
-    const extension = extname(absolutePath).toLowerCase();
+    const logoUrl = await this.settingsService.getLogoPath();
+
+    if (!logoUrl.startsWith("http")) {
+      throw new BadRequestException("Tenant logo is not stored in a public URL");
+    }
+
+    const response = await fetch(logoUrl);
+    if (!response.ok) {
+      throw new BadRequestException("Tenant logo could not be fetched");
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
     const contentType =
-      extension === ".svg"
-        ? "image/svg+xml"
-        : extension === ".jpg" || extension === ".jpeg"
-          ? "image/jpeg"
-          : extension === ".webp"
-            ? "image/webp"
-            : "image/png";
+      response.headers.get("content-type") || "image/png";
 
     res.setHeader("Content-Type", contentType);
-    return new StreamableFile(createReadStream(absolutePath));
+    return new StreamableFile(buffer);
   }
 }
